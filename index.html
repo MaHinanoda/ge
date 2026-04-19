@@ -8,56 +8,101 @@
 body {
   margin: 0;
   height: 100vh;
-
   background-image: url("IMG_4675.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-
   display: flex;
   justify-content: center;
   align-items: center;
-
   font-family: sans-serif;
 }
 
-/* 半透明オーバーレイ（見やすくする） */
 .overlay {
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.75);
   padding: 30px;
   border-radius: 15px;
   text-align: center;
-  width: 80%;
+  width: 85%;
   max-width: 400px;
+  color: white;
 }
 
-/* タイトル */
 h1 {
-  color: white;
-  font-size: 8vw;       /* ←スマホで自動調整 */
+  font-size: 8vw;
   margin-bottom: 20px;
 }
 
-/* ボタン */
-.start-btn {
-  display: block;
-  padding: 15px;
-  font-size: 5vw;       /* ←スマホで大きさ調整 */
-  background: white;
-  color: black;
-  text-decoration: none;
-  border-radius: 10px;
-  margin-top: 10px;
+p {
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 20px;
 }
 
-/* PC用にサイズ制限 */
+/* ボタンのレイアウト */
+.btn-group {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.btn {
+  flex: 1;
+  padding: 15px;
+  font-size: 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  font-weight: bold;
+  transition: 0.2s;
+}
+
+.yes-btn { background: #ff595e; color: white; }
+.no-btn { background: #666; color: white; }
+.btn:hover { opacity: 0.8; }
+
+/* ロボット確認エリア（最初は隠す） */
+#robot-check-area {
+  display: none;
+  margin-top: 20px;
+  background: #f9f9f9;
+  color: #333;
+  padding: 15px;
+  border-radius: 5px;
+  border: 1px solid #d3d3d3;
+  text-align: left;
+  display: none; /* JSで制御 */
+}
+
+.captcha-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.captcha-box input {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+}
+
+/* スタートボタンエリア（チェック後に表示） */
+#start-btn-container {
+  display: none;
+  margin-top: 20px;
+}
+
+.start-btn {
+  background: white;
+  color: black;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 @media (min-width: 600px) {
-  h1 {
-    font-size: 40px;
-  }
-  .start-btn {
-    font-size: 20px;
-  }
+  h1 { font-size: 40px; }
 }
 </style>
 </head>
@@ -66,8 +111,53 @@ h1 {
 
 <div class="overlay">
   <h1>ブロック崩し</h1>
-  <a href="ブロック崩し.html" class="start-btn">スタート</a>
+
+  <div id="age-check-area">
+    <p>あなたは18歳以上ですか？</p>
+    <div class="btn-group">
+      <button class="btn yes-btn" onclick="showRobotCheck()">はい</button>
+      <button class="btn no-btn" onclick="exitGame()">いいえ</button>
+    </div>
+  </div>
+
+  <div id="robot-check-area">
+    <div class="captcha-box">
+      <input type="checkbox" id="not-robot" onclick="verifyRobot()">
+      <label for="not-robot" style="cursor:pointer;">私はロボットではありません</label>
+      <img src="https://www.gstatic.com/recaptcha/api2/logo_48.png" width="30" style="margin-left:auto;">
+    </div>
+  </div>
+
+  <div id="start-btn-container">
+    <p>認証完了！</p>
+    <a href="ブロック崩し.html" class="btn start-btn">ゲームをスタート</a>
+  </div>
 </div>
+
+<script>
+// 1. 年齢確認で「はい」を押した時
+function showRobotCheck() {
+  document.getElementById('age-check-area').style.display = 'none';
+  document.getElementById('robot-check-area').style.display = 'block';
+}
+
+// 2. ロボット確認のチェックボックスを押した時
+function verifyRobot() {
+  const checkbox = document.getElementById('not-robot');
+  if (checkbox.checked) {
+    // 少し待ってからスタートボタンを出すと「認証してる感」が出ます
+    setTimeout(() => {
+      document.getElementById('robot-check-area').style.display = 'none';
+      document.getElementById('start-btn-container').style.display = 'block';
+    }, 800);
+  }
+}
+
+// 「いいえ」を押した場合
+function exitGame() {
+  window.location.href = "https://www.google.com";
+}
+</script>
 
 </body>
 </html>
