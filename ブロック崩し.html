@@ -2,8 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ブロック崩し</title>
-
+<title>ブロック崩し - 10 STAGES</title>
 <style>
 body {
   margin: 0;
@@ -14,203 +13,242 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-family: sans-serif;
+  font-family: 'Arial Black', sans-serif;
+  color: white;
+  overflow: hidden;
 }
+#menu {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.stage-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+.stage-btn {
+  width: 60px;
+  height: 60px;
+  background: #444;
+  border: 2px solid #fff;
+  color: white;
+  cursor: pointer;
+  font-size: 18px;
+}
+.stage-btn:hover { background: #ff595e; }
+.stage-btn.hard { border-color: red; color: red; }
+
 canvas {
   display: block;
   margin: 20px auto;
-  background: rgba(0, 0, 0, 0.8);
-  border: 2px solid #fff;
+  background: rgba(0, 0, 0, 0.85);
+  border: 3px solid #fff;
 }
-#retryBtn {
+#retryBtn, #menuBtn {
   display: none;
-  margin: 10px auto;
-  padding: 12px 20px;
-  font-size: 18px;
+  margin: 5px;
+  padding: 10px 20px;
+  font-size: 16px;
   background: white;
-  border: none;
   border-radius: 5px;
   cursor: pointer;
+  font-weight: bold;
 }
 </style>
 </head>
 <body>
 
+<div id="menu">
+  <h1>SELECT STAGE</h1>
+  <div class="stage-grid" id="stageGrid"></div>
+</div>
+
+<div style="text-align: center; margin-top: 10px;">
+  <span id="stageName">STAGE 1</span> | Score: <span id="score">0</span>
+</div>
+
 <canvas id="game"></canvas>
-<button id="retryBtn">なけなしのもう一回</button>
+
+<div style="display: flex;">
+  <button id="retryBtn">なけなしのもう一回</button>
+  <button id="menuBtn" style="display:inline-block;">ステージ選択へ</button>
+</div>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+const sfxBreak = new Audio("Fracture03-1(Dry).mp3");
 
 let animationId;
 const ballImage = new Image();
 ballImage.src = "ball.png";
 
-// ===== 指定された音声ファイルの読み込み =====
-// ※拡張子が .mp3 であると仮定しています。もし .wav なら書き換えてください。
-const sfxBreak = new Audio("Fracture03-1(Dry).mp3"); 
-
-// 音を鳴らす関数（連続して当たっても鳴るように再生位置をリセット）
-function playSound(audio) {
-  audio.currentTime = 0;
-  audio.play().catch(e => console.log("音声の再生がブロックされました。画面を一度クリックしてください。"));
-}
-
-// ===== 変数設定 =====
-let ballRadius;
-let x, y, dx, dy;
+let currentStage = 1;
+let score = 0;
+let ballRadius, x, y, dx, dy;
 let paddleHeight = 12;
-let paddleWidth;
-let paddleX;
-let rightPressed = false;
-let leftPressed = false;
+let paddleWidth, paddleX;
+let rightPressed = false, leftPressed = false;
 
-const brickRowCount = 5;
-const brickColumnCount = 7;
-let brickWidth;
-let brickHeight = 20;
-let brickPadding = 10;
-let brickOffsetTop = 30;
-let brickOffsetLeft = 20;
-const brickColors = ["#FF595E", "#FFCA3A", "#8AC926", "#1982C4", "#6A4C93"];
+const brickRowCount = 8;
+const brickColumnCount = 10;
+let brickWidth, brickHeight = 18, brickPadding = 5, brickOffsetTop = 40, brickOffsetLeft = 15;
+const brickColors = ["#FF595E", "#FFCA3A", "#8AC926", "#1982C4", "#6A4C93", "#F15BB5", "#EE6055", "#60D394"];
 
 let bricks = [];
-for (let c = 0; c < brickColumnCount; c++) {
-  bricks[c] = [];
-  for (let r = 0; r < brickRowCount; r++) {
-    bricks[c][r] = { x: 0, y: 0, status: 1 };
+
+// ステージ生成
+const grid = document.getElementById("stageGrid");
+for(let i=1; i<=10; i++) {
+  const btn = document.createElement("button");
+  btn.className = "stage-btn" + (i === 10 ? " hard" : "");
+  btn.innerText = i;
+  btn.onclick = () => startLevel(i);
+  grid.appendChild(btn);
+}
+
+function getLayout(stage) {
+  let layout = [];
+  for(let c=0; c<brickColumnCount; c++) {
+    layout[c] = [];
+    for(let r=0; r<brickRowCount; r++) {
+      let v = 0;
+      if(stage === 1) v = 1; 
+      if(stage === 2) v = (r < 4) ? 1 : 0;
+      if(stage === 3) v = (c % 2 === 0) ? 1 : 0;
+      if(stage === 4) v = (r % 2 === 0) ? 1 : 0;
+      if(stage === 5) v = (c === r || c === (brickColumnCount-1)-r) ? 1 : 0;
+      if(stage === 6) v = (r === 0 || r === 7 || c === 0 || c === 9) ? 1 : 0;
+      if(stage === 7) v = (c+r) % 3 === 0 ? 1 : 0;
+      if(stage === 8) v = (r > 2 && r < 6 && c > 2 && c < 7) ? 0 : 1;
+      if(stage === 9) v = 1; // 9は配置よりスピード
+      if(stage === 10) v = 1; // 絶望
+      layout[c][r] = { x: 0, y: 0, status: v };
+    }
   }
+  return layout;
+}
+
+function startLevel(stage) {
+  currentStage = stage;
+  document.getElementById("menu").style.display = "none";
+  document.getElementById("stageName").innerText = "STAGE " + stage + (stage === 10 ? " (IMPOSSIBLE)" : "");
+  document.getElementById("retryBtn").style.display = "none";
+  resizeCanvas();
+  
+  bricks = getLayout(stage);
+  x = canvas.width / 2;
+  y = canvas.height - 50;
+  
+  // ステージ10はパドルを極小にし、スピードをバグらせる
+  let baseSpeed = 4 + (stage * 0.5);
+  if(stage === 9) baseSpeed = 10;
+  if(stage === 10) {
+    baseSpeed = 15;
+    paddleWidth = 10; // ほぼ当たらない
+  }
+  
+  dx = baseSpeed;
+  dy = -baseSpeed;
+  
+  score = 0;
+  document.getElementById("score").innerText = score;
+  cancelAnimationFrame(animationId);
+  draw();
 }
 
 function resizeCanvas() {
-  const maxWidth = 900;
+  const maxWidth = 800;
   canvas.width = Math.min(window.innerWidth - 20, maxWidth);
-  canvas.height = canvas.width * 0.66;
-  paddleWidth = canvas.width * 0.2;
-  ballRadius = canvas.width * 0.03; 
+  canvas.height = canvas.width * 0.7;
+  paddleWidth = canvas.width * (currentStage === 9 ? 0.1 : 0.2);
+  ballRadius = canvas.width * 0.02;
   paddleX = (canvas.width - paddleWidth) / 2;
   brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumnCount - 1))) / brickColumnCount;
 }
 
-// ===== 操作 =====
-document.addEventListener("keydown", e => {
-  if (e.key === "ArrowRight") rightPressed = true;
-  if (e.key === "ArrowLeft") leftPressed = true;
-});
-document.addEventListener("keyup", e => {
-  if (e.key === "ArrowRight") rightPressed = false;
-  if (e.key === "ArrowLeft") leftPressed = false;
-});
-
-canvas.addEventListener("touchmove", e => {
-  e.preventDefault();
-  const rect = canvas.getBoundingClientRect();
-  const touchX = e.touches[0].clientX - rect.left;
-  paddleX = touchX - paddleWidth / 2;
-  if (paddleX < 0) paddleX = 0;
-  if (paddleX > canvas.width - paddleWidth) paddleX = canvas.width - paddleWidth;
-}, { passive: false });
-
-// ===== ゲーム処理 =====
-function resetGame() {
-  cancelAnimationFrame(animationId);
-  resizeCanvas();
-  x = canvas.width / 2;
-  y = canvas.height - 60;
-  dx = 4;
-  dy = -4;
-  for (let c = 0; c < brickColumnCount; c++) {
-    for (let r = 0; r < brickRowCount; r++) {
-      bricks[c][r].status = 1;
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // ブロック描画
+  let active = 0;
+  for(let c=0; c<brickColumnCount; c++) {
+    for(let r=0; r<brickRowCount; r++) {
+      let b = bricks[c][r];
+      if(b.status === 1) {
+        active++;
+        let bx = c*(brickWidth+brickPadding)+brickOffsetLeft;
+        let by = r*(brickHeight+brickPadding)+brickOffsetTop;
+        b.x = bx; b.y = by;
+        ctx.fillStyle = brickColors[r];
+        ctx.fillRect(bx, by, brickWidth, brickHeight);
+      }
     }
   }
-  document.getElementById("retryBtn").style.display = "none";
-  draw();
-}
 
-function collisionDetection() {
-  let activeBricks = 0;
-  for (let c = 0; c < brickColumnCount; c++) {
-    for (let r = 0; r < brickRowCount; r++) {
-      const b = bricks[c][r];
-      if (b.status === 1) {
-        activeBricks++;
-        if (x + ballRadius > b.x && x - ballRadius < b.x + brickWidth &&
-            y + ballRadius > b.y && y - ballRadius < b.y + brickHeight) {
-          dy = -dy;
-          b.status = 0;
-          playSound(sfxBreak); // ここでFracture03-1(Dry)が鳴ります
+  // ステージ10の呪い（クリア不可にするための動的ブロック生成）
+  if(currentStage === 10 && active < 50) {
+      for(let i=0; i<3; i++) bricks[Math.floor(Math.random()*brickColumnCount)][Math.floor(Math.random()*brickRowCount)].status = 1;
+  }
+
+  // ボール・パドル
+  ctx.drawImage(ballImage, x - ballRadius, y - ballRadius, ballRadius * 2, ballRadius * 2);
+  ctx.fillStyle = "white";
+  ctx.fillRect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+
+  // 当たり判定
+  for(let c=0; c<brickColumnCount; c++) {
+    for(let r=0; r<brickRowCount; r++) {
+      let b = bricks[c][r];
+      if(b.status === 1) {
+        if(x > b.x && x < b.x+brickWidth && y > b.y && y < b.y+brickHeight) {
+          dy = -dy; b.status = 0;
+          score += 10; document.getElementById("score").innerText = score;
+          sfxBreak.currentTime = 0; sfxBreak.play().catch(()=>{});
         }
       }
     }
   }
-  if (activeBricks === 0) {
-    alert("STAGE CLEAR!");
-    resetGame();
-  }
-}
 
-function drawBall() {
-  ctx.drawImage(ballImage, x - ballRadius, y - ballRadius, ballRadius * 2, ballRadius * 2);
-}
-
-function drawPaddle() {
-  ctx.fillStyle = "white";
-  ctx.fillRect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
-}
-
-function drawBricks() {
-  for (let c = 0; c < brickColumnCount; c++) {
-    for (let r = 0; r < brickRowCount; r++) {
-      const b = bricks[c][r];
-      if (b.status === 1) {
-        const brickX = c * (brickWidth + brickPadding) + brickOffsetLeft;
-        const brickY = r * (brickHeight + brickPadding) + brickOffsetTop;
-        b.x = brickX;
-        b.y = brickY;
-        ctx.fillStyle = brickColors[r];
-        ctx.fillRect(brickX, brickY, brickWidth, brickHeight);
-      }
-    }
-  }
-}
-
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawBricks();
-  drawBall();
-  drawPaddle();
-  collisionDetection();
-
-  if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) dx = -dx;
-  if (y + dy < ballRadius) dy = -dy;
-
-  if (y + dy > canvas.height - ballRadius) {
-    if (x > paddleX && x < paddleX + paddleWidth) {
-      const hitPos = (x - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
-      dx = hitPos * 5;
+  if(x + dx > canvas.width - ballRadius || x + dx < ballRadius) dx = -dx;
+  if(y + dy < ballRadius) dy = -dy;
+  if(y + dy > canvas.height - ballRadius) {
+    if(x > paddleX && x < paddleX + paddleWidth) {
       dy = -Math.abs(dy);
     } else {
-      document.getElementById("retryBtn").style.display = "block";
+      document.getElementById("retryBtn").style.display = "inline-block";
       return;
     }
   }
 
-  if (rightPressed && paddleX < canvas.width - paddleWidth) paddleX += 7;
-  if (leftPressed && paddleX > 0) paddleX -= 7;
+  if(rightPressed && paddleX < canvas.width - paddleWidth) paddleX += 8;
+  if(leftPressed && paddleX > 0) paddleX -= 8;
 
-  x += dx;
-  y += dy;
+  x += dx; y += dy;
+  if(active === 0 && currentStage !== 10) { alert("CLEAR!"); document.getElementById("menu").style.display = "flex"; return; }
   animationId = requestAnimationFrame(draw);
 }
 
-document.getElementById("retryBtn").onclick = resetGame;
-window.addEventListener("resize", resizeCanvas);
-
-ballImage.onload = resetGame;
-resetGame(); 
+document.addEventListener("keydown", e => {
+  if(e.key === "ArrowRight") rightPressed = true;
+  if(e.key === "ArrowLeft") leftPressed = true;
+});
+document.addEventListener("keyup", e => {
+  if(e.key === "ArrowRight") rightPressed = false;
+  if(e.key === "ArrowLeft") leftPressed = false;
+});
+document.getElementById("retryBtn").onclick = () => startLevel(currentStage);
+document.getElementById("menuBtn").onclick = () => {
+  cancelAnimationFrame(animationId);
+  document.getElementById("menu").style.display = "flex";
+};
 </script>
-
 </body>
 </html>
