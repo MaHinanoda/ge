@@ -1,24 +1,29 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>ブロック崩し（強化版）</title>
-  <style>
-    canvas {
-      background: #000;
-      display: block;
-      margin: 0 auto;
-    }
-    #retryBtn {
-      display: none;
-      margin: 20px auto;
-      padding: 10px 20px;
-      font-size: 18px;
-    }
-  </style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ブロック崩し</title>
+<style>
+body {
+  margin: 0;
+  background: #111;
+}
+canvas {
+  display: block;
+  margin: 20px auto;
+  background: black;
+}
+#retryBtn {
+  display: none;
+  margin: 10px auto;
+  padding: 10px 20px;
+  font-size: 18px;
+}
+</style>
 </head>
 <body>
 
-<canvas id="game" width="480" height="320"></canvas>
+<canvas id="game"></canvas>
 <button id="retryBtn">もう一回</button>
 
 <script>
@@ -27,55 +32,34 @@ const ctx = canvas.getContext("2d");
 
 let animationId;
 
-// ===== ボール画像 =====
-const ballImage = new Image();
-ballImage.src = "ball.png";
+// ===== サイズ調整 =====
+function resizeCanvas() {
+  let maxWidth = 900;
 
-// ===== 初期化 =====
-function resetGame() {
-  x = canvas.width / 2;
-  y = canvas.height - 30;
-  dx = 3;
-  dy = -3;
+  canvas.width = Math.min(window.innerWidth, maxWidth);
+  canvas.height = canvas.width * 0.66;
+
+  paddleWidth = canvas.width * 0.2;
+  ballRadius = canvas.width * 0.025;
 
   paddleX = (canvas.width - paddleWidth) / 2;
 
-  for (let c = 0; c < brickColumnCount; c++) {
-    for (let r = 0; r < brickRowCount; r++) {
-      bricks[c][r].status = 1;
-    }
-  }
-
-  document.getElementById("retryBtn").style.display = "none";
-  draw();
+  brickWidth = canvas.width / brickColumnCount - 10;
 }
+window.addEventListener("resize", resizeCanvas);
+
+// ===== 画像 =====
+const ballImage = new Image();
+ballImage.src = "ball.png";
 
 // ===== ボール =====
 let x, y, dx, dy;
-let ballRadius = 25;
-
-function drawBall() {
-  ctx.drawImage(
-    ballImage,
-    x - ballRadius,
-    y - ballRadius,
-    ballRadius * 2,
-    ballRadius * 2
-  );
-}
+let ballRadius;
 
 // ===== パドル =====
 let paddleHeight = 10;
-let paddleWidth = 75;
+let paddleWidth;
 let paddleX;
-
-function drawPaddle() {
-  ctx.beginPath();
-  ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
-  ctx.fillStyle = "white";
-  ctx.fill();
-  ctx.closePath();
-}
 
 // ===== 操作 =====
 let rightPressed = false;
@@ -90,14 +74,22 @@ document.addEventListener("keyup", e => {
   if (e.key === "ArrowLeft") leftPressed = false;
 });
 
+// タッチ操作
+canvas.addEventListener("touchmove", function(e) {
+  e.preventDefault();
+  let rect = canvas.getBoundingClientRect();
+  let touchX = e.touches[0].clientX - rect.left;
+  paddleX = touchX - paddleWidth / 2;
+}, { passive: false });
+
 // ===== ブロック =====
 let brickRowCount = 5;
 let brickColumnCount = 7;
-let brickWidth = 55;
+let brickWidth;
 let brickHeight = 20;
 let brickPadding = 10;
 let brickOffsetTop = 30;
-let brickOffsetLeft = 30;
+let brickOffsetLeft = 20;
 
 let bricks = [];
 for (let c = 0; c < brickColumnCount; c++) {
@@ -107,52 +99,78 @@ for (let c = 0; c < brickColumnCount; c++) {
   }
 }
 
+// ===== 初期化 =====
+function resetGame() {
+  resizeCanvas();
+
+  x = canvas.width / 2;
+  y = canvas.height - 40;
+  dx = 3;
+  dy = -3;
+
+  for (let c = 0; c < brickColumnCount; c++) {
+    for (let r = 0; r < brickRowCount; r++) {
+      bricks[c][r].status = 1;
+    }
+  }
+
+  document.getElementById("retryBtn").style.display = "none";
+  draw();
+}
+
+// ===== 描画 =====
+function drawBall() {
+  ctx.drawImage(
+    ballImage,
+    x - ballRadius,
+    y - ballRadius,
+    ballRadius * 2,
+    ballRadius * 2
+  );
+}
+
+function drawPaddle() {
+  ctx.fillStyle = "white";
+  ctx.fillRect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+}
+
 function drawBricks() {
   for (let c = 0; c < brickColumnCount; c++) {
     for (let r = 0; r < brickRowCount; r++) {
-      if (bricks[c][r].status === 1) {
+      let b = bricks[c][r];
+      if (b.status === 1) {
         let brickX = c * (brickWidth + brickPadding) + brickOffsetLeft;
         let brickY = r * (brickHeight + brickPadding) + brickOffsetTop;
+        b.x = brickX;
+        b.y = brickY;
 
-        bricks[c][r].x = brickX;
-        bricks[c][r].y = brickY;
-
-        ctx.beginPath();
-        ctx.rect(brickX, brickY, brickWidth, brickHeight);
         ctx.fillStyle = "white";
-        ctx.fill();
-        ctx.closePath();
+        ctx.fillRect(brickX, brickY, brickWidth, brickHeight);
       }
     }
   }
 }
 
-// ===== 改良当たり判定 =====
+// ===== 当たり判定 =====
 function collisionDetection() {
   for (let c = 0; c < brickColumnCount; c++) {
     for (let r = 0; r < brickRowCount; r++) {
       let b = bricks[c][r];
       if (b.status === 1) {
-
-        // 前の位置
         let prevX = x - dx;
         let prevY = y - dy;
 
-        // 当たり判定（半径考慮）
         if (
           x + ballRadius > b.x &&
           x - ballRadius < b.x + brickWidth &&
           y + ballRadius > b.y &&
           y - ballRadius < b.y + brickHeight
         ) {
-
-          // 横 or 縦で反射変える
           if (prevX < b.x || prevX > b.x + brickWidth) {
             dx = -dx;
           } else {
             dy = -dy;
           }
-
           b.status = 0;
         }
       }
@@ -169,18 +187,15 @@ function draw() {
   drawBricks();
   collisionDetection();
 
-  // 壁反射
   if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) dx = -dx;
   if (y + dy < ballRadius) dy = -dy;
 
-  // ===== パドル反射（角度あり） =====
+  // パドル
   if (y + dy > canvas.height - ballRadius) {
     if (x > paddleX && x < paddleX + paddleWidth) {
-
-      let hitPoint = (x - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
-      dx = hitPoint * 4;
+      let hit = (x - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
+      dx = hit * 5;
       dy = -Math.abs(dy);
-
     } else {
       cancelAnimationFrame(animationId);
       document.getElementById("retryBtn").style.display = "block";
@@ -188,9 +203,9 @@ function draw() {
     }
   }
 
-  // 移動
-  if (rightPressed && paddleX < canvas.width - paddleWidth) paddleX += 5;
-  if (leftPressed && paddleX > 0) paddleX -= 5;
+  // PC操作
+  if (rightPressed && paddleX < canvas.width - paddleWidth) paddleX += 6;
+  if (leftPressed && paddleX > 0) paddleX -= 6;
 
   x += dx;
   y += dy;
@@ -198,10 +213,10 @@ function draw() {
   animationId = requestAnimationFrame(draw);
 }
 
-// ===== リトライ =====
+// リトライ
 document.getElementById("retryBtn").onclick = resetGame;
 
-// ===== スタート =====
+// スタート
 resetGame();
 </script>
 
