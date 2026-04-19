@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>究極・ご当地勇者のブロック崩し COMPLETE</title>
+<title>究極・スマホ最適化版ブロック崩し</title>
 <style>
   /* --------------------------------------------------
      デザイン設定（CSS）
@@ -17,81 +17,78 @@
     color: white; touch-action: none; overflow: hidden;
   }
 
+  /* ステージ選択メニュー：スマホではみ出さないよう flex-wrap を使用 */
   #menu {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.95);
-    display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.96);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 999; padding: 20px; box-sizing: border-box;
   }
 
-  #title-msg { font-size: 36px; font-weight: bold; text-shadow: 0 0 10px #00d4ff; margin-bottom: 10px; }
-  #sub-title { font-size: 18px; color: #00d4ff; margin-bottom: 30px; }
+  #title-msg { font-size: 28px; font-weight: bold; text-shadow: 0 0 10px #00d4ff; text-align: center; }
+  
+  /* ボタンが画面幅に合わせて自動改行されるように修正 */
+  .stage-grid {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 12px; max-width: 100%; margin: 20px 0;
+  }
 
-  .stage-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-bottom: 30px; }
   .stage-btn {
-    width: 70px; height: 70px; background: #111; border: 3px solid #00d4ff;
-    color: #00d4ff; cursor: pointer; font-size: 24px; font-weight: bold; border-radius: 15px;
-    transition: all 0.3s ease;
-  }
-  .stage-btn:hover { background: #00d4ff; color: #000; transform: scale(1.1); }
-  .stage-btn.hard { border-color: #ff0000; color: #ff0000; }
-
-  #hud { margin-top: 20px; text-align: center; }
-  #score-container { font-size: 20px; margin: 5px 0; }
-  #location-badge {
-    padding: 5px 15px; background: rgba(0, 212, 255, 0.2);
-    border: 1px solid #00d4ff; border-radius: 20px; font-size: 14px;
+    width: 55px; height: 55px; background: #111; border: 2px solid #00d4ff;
+    color: #00d4ff; cursor: pointer; font-size: 20px; font-weight: bold; border-radius: 12px;
   }
 
+  /* ゲーム画面のレイアウト調整 */
   canvas {
     display: block; background: rgba(0, 0, 0, 0.9);
-    border: 4px solid #fff; margin-top: 15px;
-    box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+    border: 2px solid #fff; margin-top: 10px;
   }
 
-  .controls { margin-top: 20px; display: flex; gap: 20px; }
+  #hud { margin-top: 10px; text-align: center; width: 100%; }
+  #score-container { font-size: 18px; }
+  
+  .controls { margin-top: 10px; display: flex; gap: 10px; }
   .ui-btn {
-    padding: 15px 35px; font-size: 18px; background: #fff; color: #000;
-    border: none; border-radius: 50px; font-weight: bold; cursor: pointer;
+    padding: 10px 25px; font-size: 16px; background: #fff; color: #000;
+    border: none; border-radius: 50px; font-weight: bold;
   }
+
   #retryBtn { background: #ff595e; color: #fff; display: none; }
   
-  /* 待機中のガイダンス */
   #guide-msg {
     position: absolute; width: 100%; text-align: center;
-    top: 60%; font-size: 24px; font-weight: bold;
-    color: #00d4ff; text-shadow: 2px 2px 5px #000;
-    pointer-events: none; display: none;
-    animation: blink 1.5s infinite;
+    top: 55%; font-size: 20px; font-weight: bold;
+    color: #00d4ff; pointer-events: none; display: none;
   }
-  @keyframes blink { 0% {opacity: 1;} 50% {opacity: 0.3;} 100% {opacity: 1;} }
 </style>
 </head>
 <body>
 
   <div id="menu">
-    <div id="title-msg">勇者、現る</div>
-    <div id="sub-title">位置情報を特定中...</div>
+    <div id="title-msg">勇者、降臨</div>
+    <div id="sub-title" style="color:#00d4ff; margin-bottom:10px;">ステージを選択</div>
     <div class="stage-grid" id="stageGrid"></div>
+    <div style="color: #888; font-size: 12px; text-align: center;">PC: 十字キー / スマホ: スライド移動<br>タップでボール射出</div>
   </div>
 
   <div id="hud">
-    <div id="stageName">STAGE 1</div>
+    <div id="stageName" style="font-weight:bold;">STAGE 1</div>
     <div id="score-container">SCORE: <span id="score">0</span></div>
-    <div id="location-badge">REGION: SEARCHING...</div>
+    <div id="location-badge" style="font-size:12px; color:#00d4ff;">REGION: ...</div>
   </div>
 
-  <div style="position: relative;">
+  <div style="position: relative; width: 100%; display: flex; justify-content: center;">
     <canvas id="game"></canvas>
-    <div id="guide-msg">画面をタップで射出！</div>
+    <div id="guide-msg">タップで射出！</div>
   </div>
 
   <div class="controls">
     <button id="retryBtn" class="ui-btn">なけなしのもう一回</button>
-    <button id="menuBtn" class="ui-btn">メニューへ戻る</button>
+    <button id="menuBtn" class="ui-btn">メニュー</button>
   </div>
 
 <script>
   /* --------------------------------------------------
-     メインスクリプト（JavaScript）
+     JavaScript 処理
      -------------------------------------------------- */
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
@@ -99,27 +96,23 @@
   const stageDisplay = document.getElementById("stageName");
   const retryBtn = document.getElementById("retryBtn");
   const guideMsg = document.getElementById("guide-msg");
-  const sfxBreak = new Audio("Fracture03-1(Dry).mp3");
   const ballImage = new Image();
   ballImage.src = "ball.png";
 
   let animationId;
   let currentStage = 1;
   let score = 0;
-  let userRegion = "未知の国";
+  let userRegion = "未知";
   let x, y, dx, dy;
   let ballRadius, paddleWidth, paddleHeight = 15, paddleX;
   
-  // 状態管理
-  let isWaiting = true; // ボールが止まっている状態か
-  let rightPressed = false;
-  let leftPressed = false;
+  let isWaiting = true;
+  let rightPressed = false, leftPressed = false;
 
   const brickRowCount = 8;
   const brickColumnCount = 10;
-  const brickPadding = 6;
-  const brickOffsetTop = 60;
-  const brickOffsetLeft = 10;
+  const brickPadding = 5;
+  let brickOffsetTop, brickOffsetLeft = 8; // OffsetTopはリサイズ時に動的計算
   let brickWidth, brickHeight;
   const brickColors = ["#FF595E", "#FFCA3A", "#8AC926", "#1982C4", "#6A4C93", "#F15BB5", "#EE6055", "#60D394"];
   let bricks = [];
@@ -130,7 +123,6 @@
     .then(data => {
       userRegion = data.region || "どこか";
       document.getElementById("title-msg").innerText = userRegion + "の勇者よ";
-      document.getElementById("sub-title").innerText = userRegion + "を守れ！";
       document.getElementById("location-badge").innerText = "REGION: " + userRegion;
     });
 
@@ -145,13 +137,20 @@
   }
 
   function resizeGame() {
-    const maxWidth = 800;
+    const maxWidth = 600; // スマホ向けに最大幅を調整
     const size = Math.min(window.innerWidth - 20, maxWidth);
-    canvas.width = size; canvas.height = size * 0.75;
-    ballRadius = canvas.width * 0.025;
+    canvas.width = size;
+    // スマホの縦長画面でもブロックとバーの距離を保つため、高さを画面に合わせて調整
+    canvas.height = Math.min(window.innerHeight * 0.6, size * 1.2);
+
+    ballRadius = canvas.width * 0.03; 
     brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumnCount - 1))) / brickColumnCount;
-    brickHeight = canvas.height * 0.05;
-    paddleWidth = (currentStage === 10) ? 30 : canvas.width * 0.22;
+    brickHeight = canvas.height * 0.04;
+    
+    // 【重要】スマホで窮屈にならないよう、ブロックの開始位置を調整
+    brickOffsetTop = 40; 
+    
+    paddleWidth = (currentStage === 10) ? 35 : canvas.width * 0.25;
   }
 
   function createBricks(stage) {
@@ -174,31 +173,27 @@
     document.getElementById("menu").style.display = "none";
     stageDisplay.innerText = (stage === 10) ? "FINAL: DESPAIR" : "STAGE " + stage;
     retryBtn.style.display = "none";
-    guideMsg.style.display = "block"; // ガイド表示
+    guideMsg.style.display = "block";
     score = 0;
     scoreDisplay.innerText = score;
     resizeGame();
     createBricks(stage);
-
     paddleX = (canvas.width - paddleWidth) / 2;
-    resetBall(); // ボールを待機状態に
+    resetBall();
     if (animationId) cancelAnimationFrame(animationId);
     draw();
   }
 
-  // ボールをパドルの上に固定する
   function resetBall() {
     isWaiting = true;
     x = paddleX + paddleWidth / 2;
-    y = canvas.height - paddleHeight - ballRadius - 2;
-    
-    let speed = 4 + (currentStage * 0.7);
-    if (currentStage === 10) speed = 16;
+    y = canvas.height - paddleHeight - ballRadius - 5;
+    let speed = 4 + (currentStage * 0.6);
+    if (currentStage === 10) speed = 14;
     dx = speed * (Math.random() > 0.5 ? 1 : -1);
     dy = -speed;
   }
 
-  // ボールを射出する
   function launchBall() {
     if (isWaiting) {
       isWaiting = false;
@@ -209,7 +204,6 @@
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // ブロック描画
     let activeBricks = 0;
     for (let c = 0; c < brickColumnCount; c++) {
       for (let r = 0; r < brickRowCount; r++) {
@@ -228,24 +222,17 @@
       bricks[Math.floor(Math.random()*brickColumnCount)][Math.floor(Math.random()*brickRowCount)].status = 1;
     }
 
-    // パドル移動
-    const moveSpeed = 12;
-    if (rightPressed && paddleX < canvas.width - paddleWidth) paddleX += moveSpeed;
-    if (leftPressed && paddleX > 0) paddleX -= moveSpeed;
+    if (rightPressed && paddleX < canvas.width - paddleWidth) paddleX += 10;
+    if (leftPressed && paddleX > 0) paddleX -= 10;
 
-    // 待機中ならボールをパドルに追従させる
     if (isWaiting) {
       x = paddleX + paddleWidth / 2;
-      y = canvas.height - paddleHeight - ballRadius - 2;
+      y = canvas.height - paddleHeight - ballRadius - 5;
     } else {
-      // 当たり判定
       collisionDetection();
-      // 移動
       x += dx; y += dy;
-      // 壁
       if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) dx = -dx;
       if (y + dy < ballRadius) dy = -dy;
-      // パドル
       if (y + dy > canvas.height - ballRadius - paddleHeight) {
         if (x > paddleX - ballRadius && x < paddleX + paddleWidth + ballRadius) {
           if (y < canvas.height - paddleHeight) {
@@ -264,7 +251,7 @@
     ctx.fillRect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
 
     if (activeBricks === 0 && currentStage !== 10) {
-      alert(userRegion + "の平和は守られた！");
+      alert(userRegion + "に平和が訪れた！");
       document.getElementById("menu").style.display = "flex";
       return;
     }
@@ -282,7 +269,6 @@
               y + ballRadius > by && y - ballRadius < by + brickHeight) {
             dy = -dy; b.status = 0;
             score += 10; scoreDisplay.innerText = score;
-            sfxBreak.currentTime = 0; sfxBreak.play().catch(()=>{});
             return;
           }
         }
@@ -290,17 +276,18 @@
     }
   }
 
-  // 操作設定
+  // キー操作
   document.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowRight" || e.key === "d") rightPressed = true;
-    if (e.key === "ArrowLeft" || e.key === "a") leftPressed = true;
+    if (e.key === "ArrowRight") rightPressed = true;
+    if (e.key === "ArrowLeft") leftPressed = true;
     if (e.key === " " || e.key === "Enter") launchBall();
   });
   document.addEventListener("keyup", (e) => {
-    if (e.key === "ArrowRight" || e.key === "d") rightPressed = false;
-    if (e.key === "ArrowLeft" || e.key === "a") leftPressed = false;
+    if (e.key === "ArrowRight") rightPressed = false;
+    if (e.key === "ArrowLeft") leftPressed = false;
   });
 
+  // タッチ/マウス操作
   function handleMove(inputX) {
     const rect = canvas.getBoundingClientRect();
     const scale = canvas.width / rect.width;
@@ -318,6 +305,7 @@
     cancelAnimationFrame(animationId);
     document.getElementById("menu").style.display = "flex";
   };
+  window.addEventListener("resize", resizeGame);
 </script>
 </body>
 </html>
