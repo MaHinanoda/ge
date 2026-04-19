@@ -1,12 +1,73 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>ブロック崩し</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ブロック崩し</title>
+
+<style>
+body {
+  margin: 0;
+  height: 100vh;
+
+  background-image: url("IMG_4675.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  font-family: sans-serif;
+}
+
+/* 半透明オーバーレイ（見やすくする） */
+.overlay {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 30px;
+  border-radius: 15px;
+  text-align: center;
+  width: 80%;
+  max-width: 400px;
+}
+
+/* タイトル */
+h1 {
+  color: white;
+  font-size: 8vw;       /* ←スマホで自動調整 */
+  margin-bottom: 20px;
+}
+
+/* ボタン */
+.start-btn {
+  display: block;
+  padding: 15px;
+  font-size: 5vw;       /* ←スマホで大きさ調整 */
+  background: white;
+  color: black;
+  text-decoration: none;
+  border-radius: 10px;
+  margin-top: 10px;
+}
+
+/* PC用にサイズ制限 */
+@media (min-width: 600px) {
+  h1 {
+    font-size: 40px;
+  }
+  .start-btn {
+    font-size: 20px;
+  }
+}
+</style>
 </head>
+
 <body>
 
-<h1>ブロック崩し</h1>
-<a href="ブロック崩し.html">▶ ゲームスタート</a>
+<div class="overlay">
+  <h1>ブロック崩し</h1>
+  <a href="ブロック崩し.html" class="start-btn">スタート</a>
+</div>
 
 </body>
 </html>
