@@ -7,18 +7,31 @@
 <style>
 body {
   margin: 0;
-  background: #111;
+  /* index.htmlと同じ背景画像を使用 */
+  background-image: url("IMG_4675.png");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: sans-serif;
 }
 canvas {
   display: block;
   margin: 20px auto;
-  background: black;
+  background: rgba(0, 0, 0, 0.8); /* 背景が見えるよう少し透過 */
+  border: 2px solid #fff;
 }
 #retryBtn {
   display: none;
   margin: 10px auto;
   padding: 12px 20px;
   font-size: 18px;
+  background: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
 }
 </style>
 </head>
@@ -33,66 +46,30 @@ const ctx = canvas.getContext("2d");
 
 let animationId;
 
-// ===== レスポンシブ =====
-function resizeCanvas() {
-  const maxWidth = 900;
-
-  canvas.width = Math.min(window.innerWidth, maxWidth);
-  canvas.height = canvas.width * 0.66;
-
-  paddleWidth = canvas.width * 0.2;
-
-  // ★ここ固定（25）
-  ballRadius = 25;
-
-  paddleX = (canvas.width - paddleWidth) / 2;
-
-  brickWidth = canvas.width / brickColumnCount - 10;
-}
-window.addEventListener("resize", resizeCanvas);
-
-// ===== 画像 =====
+// ===== 画像の読み込み =====
 const ballImage = new Image();
 ballImage.src = "ball.png";
 
-// ===== ボール =====
-let x, y, dx, dy;
+// ===== 変数設定 =====
 let ballRadius;
-
-// ===== パドル =====
+let x, y, dx, dy;
 let paddleHeight = 12;
 let paddleWidth;
 let paddleX;
-
-// ===== 操作（PC）=====
 let rightPressed = false;
 let leftPressed = false;
 
-document.addEventListener("keydown", e => {
-  if (e.key === "ArrowRight") rightPressed = true;
-  if (e.key === "ArrowLeft") leftPressed = true;
-});
-document.addEventListener("keyup", e => {
-  if (e.key === "ArrowRight") rightPressed = false;
-  if (e.key === "ArrowLeft") leftPressed = false;
-});
-
-// ===== 操作（スマホ）=====
-canvas.addEventListener("touchmove", function(e) {
-  e.preventDefault();
-  const rect = canvas.getBoundingClientRect();
-  const touchX = e.touches[0].clientX - rect.left;
-  paddleX = touchX - paddleWidth / 2;
-}, { passive: false });
-
-// ===== ブロック =====
-let brickRowCount = 5;
-let brickColumnCount = 7;
+// ブロック設定
+const brickRowCount = 5;
+const brickColumnCount = 7;
 let brickWidth;
 let brickHeight = 20;
 let brickPadding = 10;
 let brickOffsetTop = 30;
 let brickOffsetLeft = 20;
+
+// 段ごとの色
+const brickColors = ["#FF595E", "#FFCA3A", "#8AC926", "#1982C4", "#6A4C93"];
 
 let bricks = [];
 for (let c = 0; c < brickColumnCount; c++) {
@@ -102,14 +79,47 @@ for (let c = 0; c < brickColumnCount; c++) {
   }
 }
 
-// ===== 初期化 =====
+function resizeCanvas() {
+  const maxWidth = 900;
+  canvas.width = Math.min(window.innerWidth - 20, maxWidth);
+  canvas.height = canvas.width * 0.66;
+
+  paddleWidth = canvas.width * 0.2;
+  // ボールのサイズを画面に合わせて調整
+  ballRadius = canvas.width * 0.03; 
+
+  paddleX = (canvas.width - paddleWidth) / 2;
+  brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumnCount - 1))) / brickColumnCount;
+}
+
+// ===== 操作 =====
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowRight") rightPressed = true;
+  if (e.key === "ArrowLeft") leftPressed = true;
+});
+document.addEventListener("keyup", e => {
+  if (e.key === "ArrowRight") rightPressed = false;
+  if (e.key === "ArrowLeft") leftPressed = false;
+});
+
+canvas.addEventListener("touchmove", e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const touchX = e.touches[0].clientX - rect.left;
+  paddleX = touchX - paddleWidth / 2;
+  if (paddleX < 0) paddleX = 0;
+  if (paddleX > canvas.width - paddleWidth) paddleX = canvas.width - paddleWidth;
+}, { passive: false });
+
+// ===== ゲーム処理 =====
 function resetGame() {
+  cancelAnimationFrame(animationId);
   resizeCanvas();
 
   x = canvas.width / 2;
   y = canvas.height - 60;
-  dx = 3;
-  dy = -3;
+  dx = 4;
+  dy = -4;
 
   for (let c = 0; c < brickColumnCount; c++) {
     for (let r = 0; r < brickRowCount; r++) {
@@ -121,15 +131,30 @@ function resetGame() {
   draw();
 }
 
-// ===== 描画 =====
+function collisionDetection() {
+  let activeBricks = 0;
+  for (let c = 0; c < brickColumnCount; c++) {
+    for (let r = 0; r < brickRowCount; r++) {
+      const b = bricks[c][r];
+      if (b.status === 1) {
+        activeBricks++;
+        if (x + ballRadius > b.x && x - ballRadius < b.x + brickWidth &&
+            y + ballRadius > b.y && y - ballRadius < b.y + brickHeight) {
+          dy = -dy;
+          b.status = 0;
+        }
+      }
+    }
+  }
+  // 全て壊したらクリア
+  if (activeBricks === 0) {
+    alert("STAGE CLEAR!");
+    resetGame();
+  }
+}
+
 function drawBall() {
-  ctx.drawImage(
-    ballImage,
-    x - ballRadius,
-    y - ballRadius,
-    ballRadius * 2,
-    ballRadius * 2
-  );
+  ctx.drawImage(ballImage, x - ballRadius, y - ballRadius, ballRadius * 2, ballRadius * 2);
 }
 
 function drawPaddle() {
@@ -146,48 +171,19 @@ function drawBricks() {
         const brickY = r * (brickHeight + brickPadding) + brickOffsetTop;
         b.x = brickX;
         b.y = brickY;
-
-        ctx.fillStyle = "white";
+        ctx.fillStyle = brickColors[r];
         ctx.fillRect(brickX, brickY, brickWidth, brickHeight);
       }
     }
   }
 }
 
-// ===== 当たり判定 =====
-function collisionDetection() {
-  for (let c = 0; c < brickColumnCount; c++) {
-    for (let r = 0; r < brickRowCount; r++) {
-      const b = bricks[c][r];
-      if (b.status === 1) {
-
-        const prevX = x - dx;
-
-        if (
-          x + ballRadius > b.x &&
-          x - ballRadius < b.x + brickWidth &&
-          y + ballRadius > b.y &&
-          y - ballRadius < b.y + brickHeight
-        ) {
-          if (prevX < b.x || prevX > b.x + brickWidth) {
-            dx = -dx;
-          } else {
-            dy = -dy;
-          }
-          b.status = 0;
-        }
-      }
-    }
-  }
-}
-
-// ===== メイン =====
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  drawBricks();
   drawBall();
   drawPaddle();
-  drawBricks();
   collisionDetection();
 
   if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) dx = -dx;
@@ -195,30 +191,30 @@ function draw() {
 
   if (y + dy > canvas.height - ballRadius) {
     if (x > paddleX && x < paddleX + paddleWidth) {
-      const hit = (x - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
-      dx = hit * 5;
+      // パドルの端に当たるほど角度がつく処理
+      const hitPos = (x - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
+      dx = hitPos * 5;
       dy = -Math.abs(dy);
     } else {
-      cancelAnimationFrame(animationId);
       document.getElementById("retryBtn").style.display = "block";
       return;
     }
   }
 
-  if (rightPressed && paddleX < canvas.width - paddleWidth) paddleX += 6;
-  if (leftPressed && paddleX > 0) paddleX -= 6;
+  if (rightPressed && paddleX < canvas.width - paddleWidth) paddleX += 7;
+  if (leftPressed && paddleX > 0) paddleX -= 7;
 
   x += dx;
   y += dy;
-
   animationId = requestAnimationFrame(draw);
 }
 
-// リトライ
 document.getElementById("retryBtn").onclick = resetGame;
+window.addEventListener("resize", resizeCanvas);
 
-// スタート
-resetGame();
+// 画像読み込み完了を待たずに開始（もし読み込めなくても色はつく）
+ballImage.onload = resetGame;
+resetGame(); 
 </script>
 
 </body>
