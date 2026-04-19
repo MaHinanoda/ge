@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>究極・スマホ最適化版ブロック崩し</title>
+<title>究極・視認性強化版ブロック崩し</title>
 <style>
   /* --------------------------------------------------
-     デザイン設定（CSS）
+     CSS：レイアウトと視認性の強化
      -------------------------------------------------- */
   body {
     margin: 0; padding: 0;
@@ -17,16 +17,13 @@
     color: white; touch-action: none; overflow: hidden;
   }
 
-  /* ステージ選択メニュー：スマホではみ出さないよう flex-wrap を使用 */
+  /* メニュー画面 */
   #menu {
     position: fixed; inset: 0; background: rgba(0,0,0,0.96);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     z-index: 999; padding: 20px; box-sizing: border-box;
   }
 
-  #title-msg { font-size: 28px; font-weight: bold; text-shadow: 0 0 10px #00d4ff; text-align: center; }
-  
-  /* ボタンが画面幅に合わせて自動改行されるように修正 */
   .stage-grid {
     display: flex; flex-wrap: wrap; justify-content: center;
     gap: 12px; max-width: 100%; margin: 20px 0;
@@ -37,43 +34,62 @@
     color: #00d4ff; cursor: pointer; font-size: 20px; font-weight: bold; border-radius: 12px;
   }
 
-  /* ゲーム画面のレイアウト調整 */
-  canvas {
-    display: block; background: rgba(0, 0, 0, 0.9);
-    border: 2px solid #fff; margin-top: 10px;
+  /* ★スコアエリアの視認性を劇的に向上 */
+  #hud {
+    margin-top: 10px; text-align: center; width: 100%;
+    background: rgba(0, 0, 0, 0.6); /* 半透明の背景 */
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.3);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
   }
 
-  #hud { margin-top: 10px; text-align: center; width: 100%; }
-  #score-container { font-size: 18px; }
-  
-  .controls { margin-top: 10px; display: flex; gap: 10px; }
+  #stageName { font-size: 18px; font-weight: bold; color: #ffca3a; }
+
+  #score-container {
+    font-size: 24px; font-weight: 900; color: #ffffff;
+    text-shadow: 
+      2px 2px 0 #000, -2px -2px 0 #000, 
+      2px -2px 0 #000, -2px 2px 0 #000,
+      0 0 8px #000; /* 黒い縁取りで背景に負けない */
+  }
+
+  #location-badge { font-size: 12px; color: #00d4ff; font-weight: bold; }
+
+  /* キャンバス */
+  canvas {
+    display: block; background: rgba(0, 0, 0, 0.85);
+    border: 3px solid #fff; margin-top: 10px;
+  }
+
+  .controls { margin-top: 15px; display: flex; gap: 10px; }
   .ui-btn {
-    padding: 10px 25px; font-size: 16px; background: #fff; color: #000;
-    border: none; border-radius: 50px; font-weight: bold;
+    padding: 12px 30px; font-size: 16px; background: #fff; color: #000;
+    border: none; border-radius: 50px; font-weight: bold; cursor: pointer;
   }
 
   #retryBtn { background: #ff595e; color: #fff; display: none; }
   
   #guide-msg {
     position: absolute; width: 100%; text-align: center;
-    top: 55%; font-size: 20px; font-weight: bold;
-    color: #00d4ff; pointer-events: none; display: none;
+    top: 55%; font-size: 22px; font-weight: bold;
+    color: #00d4ff; text-shadow: 2px 2px 4px #000;
+    pointer-events: none; display: none;
   }
 </style>
 </head>
 <body>
 
   <div id="menu">
-    <div id="title-msg">勇者、降臨</div>
+    <div id="title-msg" style="font-size:28px; font-weight:bold;">お前、降臨</div>
     <div id="sub-title" style="color:#00d4ff; margin-bottom:10px;">ステージを選択</div>
     <div class="stage-grid" id="stageGrid"></div>
-    <div style="color: #888; font-size: 12px; text-align: center;">PC: 十字キー / スマホ: スライド移動<br>タップでボール射出</div>
+    <div style="color: #ccc; font-size: 11px; text-align: center;">※音が出ない場合は画面を一度タップしてください</div>
   </div>
 
   <div id="hud">
-    <div id="stageName" style="font-weight:bold;">STAGE 1</div>
+    <div id="stageName">STAGE 1</div>
     <div id="score-container">SCORE: <span id="score">0</span></div>
-    <div id="location-badge" style="font-size:12px; color:#00d4ff;">REGION: ...</div>
+    <div id="location-badge">REGION: ...</div>
   </div>
 
   <div style="position: relative; width: 100%; display: flex; justify-content: center;">
@@ -88,7 +104,7 @@
 
 <script>
   /* --------------------------------------------------
-     JavaScript 処理
+     JavaScript：サウンドとロジックの修正
      -------------------------------------------------- */
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
@@ -96,6 +112,11 @@
   const stageDisplay = document.getElementById("stageName");
   const retryBtn = document.getElementById("retryBtn");
   const guideMsg = document.getElementById("guide-msg");
+
+  // サウンドの初期化
+  const sfxBreak = new Audio("Fracture03-1(Dry).mp3");
+  sfxBreak.load(); // プリロード
+
   const ballImage = new Image();
   ballImage.src = "ball.png";
 
@@ -112,7 +133,7 @@
   const brickRowCount = 8;
   const brickColumnCount = 10;
   const brickPadding = 5;
-  let brickOffsetTop, brickOffsetLeft = 8; // OffsetTopはリサイズ時に動的計算
+  let brickOffsetTop, brickOffsetLeft = 8;
   let brickWidth, brickHeight;
   const brickColors = ["#FF595E", "#FFCA3A", "#8AC926", "#1982C4", "#6A4C93", "#F15BB5", "#EE6055", "#60D394"];
   let bricks = [];
@@ -137,19 +158,15 @@
   }
 
   function resizeGame() {
-    const maxWidth = 600; // スマホ向けに最大幅を調整
+    const maxWidth = 600;
     const size = Math.min(window.innerWidth - 20, maxWidth);
     canvas.width = size;
-    // スマホの縦長画面でもブロックとバーの距離を保つため、高さを画面に合わせて調整
-    canvas.height = Math.min(window.innerHeight * 0.6, size * 1.2);
+    canvas.height = Math.min(window.innerHeight * 0.55, size * 1.1);
 
     ballRadius = canvas.width * 0.03; 
     brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumnCount - 1))) / brickColumnCount;
     brickHeight = canvas.height * 0.04;
-    
-    // 【重要】スマホで窮屈にならないよう、ブロックの開始位置を調整
-    brickOffsetTop = 40; 
-    
+    brickOffsetTop = 50; 
     paddleWidth = (currentStage === 10) ? 35 : canvas.width * 0.25;
   }
 
@@ -169,6 +186,9 @@
   }
 
   function startLevel(stage) {
+    // 音声再生を有効にするためのダミー再生
+    sfxBreak.play().then(() => { sfxBreak.pause(); sfxBreak.currentTime = 0; }).catch(()=>{});
+
     currentStage = stage;
     document.getElementById("menu").style.display = "none";
     stageDisplay.innerText = (stage === 10) ? "FINAL: DESPAIR" : "STAGE " + stage;
@@ -198,6 +218,14 @@
     if (isWaiting) {
       isWaiting = false;
       guideMsg.style.display = "none";
+    }
+  }
+
+  // 音を鳴らす関数（エラー回避用）
+  function playBreakSound() {
+    const playPromise = sfxBreak.cloneNode(true).play();
+    if (playPromise !== undefined) {
+      playPromise.catch(error => { console.log("再生失敗:", error); });
     }
   }
 
@@ -269,6 +297,7 @@
               y + ballRadius > by && y - ballRadius < by + brickHeight) {
             dy = -dy; b.status = 0;
             score += 10; scoreDisplay.innerText = score;
+            playBreakSound(); // 修正した音響関数を呼ぶ
             return;
           }
         }
@@ -276,7 +305,6 @@
     }
   }
 
-  // キー操作
   document.addEventListener("keydown", (e) => {
     if (e.key === "ArrowRight") rightPressed = true;
     if (e.key === "ArrowLeft") leftPressed = true;
@@ -287,7 +315,6 @@
     if (e.key === "ArrowLeft") leftPressed = false;
   });
 
-  // タッチ/マウス操作
   function handleMove(inputX) {
     const rect = canvas.getBoundingClientRect();
     const scale = canvas.width / rect.width;
