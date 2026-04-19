@@ -7,7 +7,6 @@
 <style>
 body {
   margin: 0;
-  /* index.htmlと同じ背景画像を使用 */
   background-image: url("IMG_4675.png");
   background-size: cover;
   background-position: center;
@@ -20,7 +19,7 @@ body {
 canvas {
   display: block;
   margin: 20px auto;
-  background: rgba(0, 0, 0, 0.8); /* 背景が見えるよう少し透過 */
+  background: rgba(0, 0, 0, 0.8);
   border: 2px solid #fff;
 }
 #retryBtn {
@@ -45,10 +44,18 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 let animationId;
-
-// ===== 画像の読み込み =====
 const ballImage = new Image();
 ballImage.src = "ball.png";
+
+// ===== 指定された音声ファイルの読み込み =====
+// ※拡張子が .mp3 であると仮定しています。もし .wav なら書き換えてください。
+const sfxBreak = new Audio("Fracture03-1(Dry).mp3"); 
+
+// 音を鳴らす関数（連続して当たっても鳴るように再生位置をリセット）
+function playSound(audio) {
+  audio.currentTime = 0;
+  audio.play().catch(e => console.log("音声の再生がブロックされました。画面を一度クリックしてください。"));
+}
 
 // ===== 変数設定 =====
 let ballRadius;
@@ -59,7 +66,6 @@ let paddleX;
 let rightPressed = false;
 let leftPressed = false;
 
-// ブロック設定
 const brickRowCount = 5;
 const brickColumnCount = 7;
 let brickWidth;
@@ -67,8 +73,6 @@ let brickHeight = 20;
 let brickPadding = 10;
 let brickOffsetTop = 30;
 let brickOffsetLeft = 20;
-
-// 段ごとの色
 const brickColors = ["#FF595E", "#FFCA3A", "#8AC926", "#1982C4", "#6A4C93"];
 
 let bricks = [];
@@ -83,11 +87,8 @@ function resizeCanvas() {
   const maxWidth = 900;
   canvas.width = Math.min(window.innerWidth - 20, maxWidth);
   canvas.height = canvas.width * 0.66;
-
   paddleWidth = canvas.width * 0.2;
-  // ボールのサイズを画面に合わせて調整
   ballRadius = canvas.width * 0.03; 
-
   paddleX = (canvas.width - paddleWidth) / 2;
   brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumnCount - 1))) / brickColumnCount;
 }
@@ -115,18 +116,15 @@ canvas.addEventListener("touchmove", e => {
 function resetGame() {
   cancelAnimationFrame(animationId);
   resizeCanvas();
-
   x = canvas.width / 2;
   y = canvas.height - 60;
   dx = 4;
   dy = -4;
-
   for (let c = 0; c < brickColumnCount; c++) {
     for (let r = 0; r < brickRowCount; r++) {
       bricks[c][r].status = 1;
     }
   }
-
   document.getElementById("retryBtn").style.display = "none";
   draw();
 }
@@ -142,11 +140,11 @@ function collisionDetection() {
             y + ballRadius > b.y && y - ballRadius < b.y + brickHeight) {
           dy = -dy;
           b.status = 0;
+          playSound(sfxBreak); // ここでFracture03-1(Dry)が鳴ります
         }
       }
     }
   }
-  // 全て壊したらクリア
   if (activeBricks === 0) {
     alert("STAGE CLEAR!");
     resetGame();
@@ -180,7 +178,6 @@ function drawBricks() {
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
   drawBricks();
   drawBall();
   drawPaddle();
@@ -191,7 +188,6 @@ function draw() {
 
   if (y + dy > canvas.height - ballRadius) {
     if (x > paddleX && x < paddleX + paddleWidth) {
-      // パドルの端に当たるほど角度がつく処理
       const hitPos = (x - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
       dx = hitPos * 5;
       dy = -Math.abs(dy);
@@ -212,7 +208,6 @@ function draw() {
 document.getElementById("retryBtn").onclick = resetGame;
 window.addEventListener("resize", resizeCanvas);
 
-// 画像読み込み完了を待たずに開始（もし読み込めなくても色はつく）
 ballImage.onload = resetGame;
 resetGame(); 
 </script>
