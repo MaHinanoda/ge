@@ -3,11 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>究極・視認性強化版ブロック崩し</title>
+<title>究極・音響＆視認性強化版</title>
 <style>
-  /* --------------------------------------------------
-     CSS：レイアウトと視認性の強化
-     -------------------------------------------------- */
+  /* --- 基本デザイン --- */
   body {
     margin: 0; padding: 0;
     background-image: url("IMG_4675.png");
@@ -17,7 +15,7 @@
     color: white; touch-action: none; overflow: hidden;
   }
 
-  /* メニュー画面 */
+  /* ステージ選択メニュー */
   #menu {
     position: fixed; inset: 0; background: rgba(0,0,0,0.96);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -37,25 +35,18 @@
   /* ★スコアエリアの視認性を劇的に向上 */
   #hud {
     margin-top: 10px; text-align: center; width: 100%;
-    background: rgba(0, 0, 0, 0.6); /* 半透明の背景 */
+    background: rgba(0, 0, 0, 0.7);
     padding: 10px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.3);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    border-bottom: 2px solid #00d4ff;
   }
-
-  #stageName { font-size: 18px; font-weight: bold; color: #ffca3a; }
 
   #score-container {
-    font-size: 24px; font-weight: 900; color: #ffffff;
+    font-size: 26px; font-weight: 900; color: #ffffff;
     text-shadow: 
       2px 2px 0 #000, -2px -2px 0 #000, 
-      2px -2px 0 #000, -2px 2px 0 #000,
-      0 0 8px #000; /* 黒い縁取りで背景に負けない */
+      2px -2px 0 #000, -2px 2px 0 #000;
   }
 
-  #location-badge { font-size: 12px; color: #00d4ff; font-weight: bold; }
-
-  /* キャンバス */
   canvas {
     display: block; background: rgba(0, 0, 0, 0.85);
     border: 3px solid #fff; margin-top: 10px;
@@ -64,7 +55,7 @@
   .controls { margin-top: 15px; display: flex; gap: 10px; }
   .ui-btn {
     padding: 12px 30px; font-size: 16px; background: #fff; color: #000;
-    border: none; border-radius: 50px; font-weight: bold; cursor: pointer;
+    border: none; border-radius: 50px; font-weight: bold;
   }
 
   #retryBtn { background: #ff595e; color: #fff; display: none; }
@@ -81,15 +72,14 @@
 
   <div id="menu">
     <div id="title-msg" style="font-size:28px; font-weight:bold;">お前、降臨</div>
-    <div id="sub-title" style="color:#00d4ff; margin-bottom:10px;">ステージを選択</div>
     <div class="stage-grid" id="stageGrid"></div>
-    <div style="color: #ccc; font-size: 11px; text-align: center;">※音が出ない場合は画面を一度タップしてください</div>
+    <p style="font-size:11px; color:#888;">※音が出ない場合は画面を一度タップしてください</p>
   </div>
 
   <div id="hud">
-    <div id="stageName">STAGE 1</div>
+    <div id="stageName" style="color:#ffca3a; font-weight:bold;">STAGE 1</div>
     <div id="score-container">SCORE: <span id="score">0</span></div>
-    <div id="location-badge">REGION: ...</div>
+    <div id="location-badge" style="font-size:12px; color:#00d4ff;">REGION: ...</div>
   </div>
 
   <div style="position: relative; width: 100%; display: flex; justify-content: center;">
@@ -104,7 +94,7 @@
 
 <script>
   /* --------------------------------------------------
-     JavaScript：サウンドとロジックの修正
+     JavaScript：サウンドプーリング実装
      -------------------------------------------------- */
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
@@ -113,39 +103,43 @@
   const retryBtn = document.getElementById("retryBtn");
   const guideMsg = document.getElementById("guide-msg");
 
-  // サウンドの初期化
-  const sfxBreak = new Audio("Fracture03-1(Dry).mp3");
-  sfxBreak.load(); // プリロード
+  // ★【音響改善】サウンドプーリングの設定
+  const SOUND_POOL_SIZE = 10; // 10個の音源を用意
+  const soundPool = [];
+  let currentSoundIndex = 0;
+
+  for (let i = 0; i < SOUND_POOL_SIZE; i++) {
+    const audio = new Audio("Fracture03-1(Dry).mp3");
+    audio.load();
+    soundPool.push(audio);
+  }
+
+  // 音を鳴らす関数：順番にプールから音源を取り出す
+  function playBreakSound() {
+    const sound = soundPool[currentSoundIndex];
+    sound.currentTime = 0; // 最初から再生
+    sound.play().catch(e => console.log("再生制限中"));
+    currentSoundIndex = (currentSoundIndex + 1) % SOUND_POOL_SIZE;
+  }
 
   const ballImage = new Image();
   ballImage.src = "ball.png";
 
-  let animationId;
-  let currentStage = 1;
-  let score = 0;
-  let userRegion = "未知";
-  let x, y, dx, dy;
-  let ballRadius, paddleWidth, paddleHeight = 15, paddleX;
-  
-  let isWaiting = true;
-  let rightPressed = false, leftPressed = false;
+  let animationId, currentStage = 1, score = 0, userRegion = "未知";
+  let x, y, dx, dy, ballRadius, paddleWidth, paddleHeight = 15, paddleX;
+  let isWaiting = true, rightPressed = false, leftPressed = false;
 
-  const brickRowCount = 8;
-  const brickColumnCount = 10;
-  const brickPadding = 5;
-  let brickOffsetTop, brickOffsetLeft = 8;
-  let brickWidth, brickHeight;
+  const brickRowCount = 8, brickColumnCount = 10, brickPadding = 5;
+  let brickOffsetTop = 50, brickOffsetLeft = 8, brickWidth, brickHeight;
   const brickColors = ["#FF595E", "#FFCA3A", "#8AC926", "#1982C4", "#6A4C93", "#F15BB5", "#EE6055", "#60D394"];
   let bricks = [];
 
   // 地域取得
-  fetch('https://ipapi.co/json/')
-    .then(res => res.json())
-    .then(data => {
-      userRegion = data.region || "どこか";
-      document.getElementById("title-msg").innerText = userRegion + "の勇者よ";
-      document.getElementById("location-badge").innerText = "REGION: " + userRegion;
-    });
+  fetch('https://ipapi.co/json/').then(res => res.json()).then(data => {
+    userRegion = data.region || "どこか";
+    document.getElementById("title-msg").innerText = userRegion + "の勇者よ";
+    document.getElementById("location-badge").innerText = "REGION: " + userRegion;
+  });
 
   // メニュー生成
   const grid = document.getElementById("stageGrid");
@@ -162,11 +156,9 @@
     const size = Math.min(window.innerWidth - 20, maxWidth);
     canvas.width = size;
     canvas.height = Math.min(window.innerHeight * 0.55, size * 1.1);
-
     ballRadius = canvas.width * 0.03; 
     brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumnCount - 1))) / brickColumnCount;
     brickHeight = canvas.height * 0.04;
-    brickOffsetTop = 50; 
     paddleWidth = (currentStage === 10) ? 35 : canvas.width * 0.25;
   }
 
@@ -186,18 +178,13 @@
   }
 
   function startLevel(stage) {
-    // 音声再生を有効にするためのダミー再生
-    sfxBreak.play().then(() => { sfxBreak.pause(); sfxBreak.currentTime = 0; }).catch(()=>{});
-
     currentStage = stage;
     document.getElementById("menu").style.display = "none";
     stageDisplay.innerText = (stage === 10) ? "FINAL: DESPAIR" : "STAGE " + stage;
     retryBtn.style.display = "none";
     guideMsg.style.display = "block";
-    score = 0;
-    scoreDisplay.innerText = score;
-    resizeGame();
-    createBricks(stage);
+    score = 0; scoreDisplay.innerText = score;
+    resizeGame(); createBricks(stage);
     paddleX = (canvas.width - paddleWidth) / 2;
     resetBall();
     if (animationId) cancelAnimationFrame(animationId);
@@ -215,33 +202,19 @@
   }
 
   function launchBall() {
-    if (isWaiting) {
-      isWaiting = false;
-      guideMsg.style.display = "none";
-    }
-  }
-
-  // 音を鳴らす関数（エラー回避用）
-  function playBreakSound() {
-    const playPromise = sfxBreak.cloneNode(true).play();
-    if (playPromise !== undefined) {
-      playPromise.catch(error => { console.log("再生失敗:", error); });
-    }
+    if (isWaiting) { isWaiting = false; guideMsg.style.display = "none"; }
   }
 
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     let activeBricks = 0;
     for (let c = 0; c < brickColumnCount; c++) {
       for (let r = 0; r < brickRowCount; r++) {
         let b = bricks[c][r];
         if (b.status === 1) {
           activeBricks++;
-          let bx = c * (brickWidth + brickPadding) + brickOffsetLeft;
-          let by = r * (brickHeight + brickPadding) + brickOffsetTop;
           ctx.fillStyle = brickColors[r];
-          ctx.fillRect(bx, by, brickWidth, brickHeight);
+          ctx.fillRect(c * (brickWidth + brickPadding) + brickOffsetLeft, r * (brickHeight + brickPadding) + brickOffsetTop, brickWidth, brickHeight);
         }
       }
     }
@@ -263,13 +236,10 @@
       if (y + dy < ballRadius) dy = -dy;
       if (y + dy > canvas.height - ballRadius - paddleHeight) {
         if (x > paddleX - ballRadius && x < paddleX + paddleWidth + ballRadius) {
-          if (y < canvas.height - paddleHeight) {
-            dy = -Math.abs(dy);
-            dx = ((x - (paddleX + paddleWidth / 2)) / (paddleWidth / 2)) * 10;
-          }
+          dy = -Math.abs(dy);
+          dx = ((x - (paddleX + paddleWidth / 2)) / (paddleWidth / 2)) * 10;
         } else if (y + dy > canvas.height - ballRadius) {
-          retryBtn.style.display = "inline-block";
-          return;
+          retryBtn.style.display = "inline-block"; return;
         }
       }
     }
@@ -280,8 +250,7 @@
 
     if (activeBricks === 0 && currentStage !== 10) {
       alert(userRegion + "に平和が訪れた！");
-      document.getElementById("menu").style.display = "flex";
-      return;
+      document.getElementById("menu").style.display = "flex"; return;
     }
     animationId = requestAnimationFrame(draw);
   }
@@ -293,11 +262,10 @@
         if (b.status === 1) {
           let bx = c * (brickWidth + brickPadding) + brickOffsetLeft;
           let by = r * (brickHeight + brickPadding) + brickOffsetTop;
-          if (x + ballRadius > bx && x - ballRadius < bx + brickWidth &&
-              y + ballRadius > by && y - ballRadius < by + brickHeight) {
+          if (x + ballRadius > bx && x - ballRadius < bx + brickWidth && y + ballRadius > by && y - ballRadius < by + brickHeight) {
             dy = -dy; b.status = 0;
             score += 10; scoreDisplay.innerText = score;
-            playBreakSound(); // 修正した音響関数を呼ぶ
+            playBreakSound(); // ここでプールから音を鳴らす
             return;
           }
         }
@@ -305,6 +273,7 @@
     }
   }
 
+  // 操作
   document.addEventListener("keydown", (e) => {
     if (e.key === "ArrowRight") rightPressed = true;
     if (e.key === "ArrowLeft") leftPressed = true;
