@@ -3,297 +3,321 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>究極ブロック崩し - 10 STAGES</title>
+<title>究極・ご当地勇者のブロック崩し COMPLETE</title>
 <style>
+  /* --------------------------------------------------
+     デザイン設定（CSS）
+     -------------------------------------------------- */
   body {
-    margin: 0;
-    padding: 0;
+    margin: 0; padding: 0;
     background-image: url("IMG_4675.png");
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    background-size: cover; background-position: center; background-attachment: fixed;
+    display: flex; flex-direction: column; align-items: center;
     font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
-    color: white;
-    touch-action: none; /* スマホのデフォルトスクロールを禁止 */
-    overflow: hidden;
+    color: white; touch-action: none; overflow: hidden;
   }
+
   #menu {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.95);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999;
   }
-  .stage-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 12px;
-    margin: 20px;
-  }
+
+  #title-msg { font-size: 36px; font-weight: bold; text-shadow: 0 0 10px #00d4ff; margin-bottom: 10px; }
+  #sub-title { font-size: 18px; color: #00d4ff; margin-bottom: 30px; }
+
+  .stage-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-bottom: 30px; }
   .stage-btn {
-    width: 55px;
-    height: 55px;
-    background: #333;
-    border: 2px solid #fff;
-    color: white;
-    cursor: pointer;
-    font-size: 18px;
-    font-weight: bold;
-    border-radius: 8px;
+    width: 70px; height: 70px; background: #111; border: 3px solid #00d4ff;
+    color: #00d4ff; cursor: pointer; font-size: 24px; font-weight: bold; border-radius: 15px;
+    transition: all 0.3s ease;
   }
-  .stage-btn:active { background: #ff595e; }
+  .stage-btn:hover { background: #00d4ff; color: #000; transform: scale(1.1); }
   .stage-btn.hard { border-color: #ff0000; color: #ff0000; }
 
+  #hud { margin-top: 20px; text-align: center; }
+  #score-container { font-size: 20px; margin: 5px 0; }
+  #location-badge {
+    padding: 5px 15px; background: rgba(0, 212, 255, 0.2);
+    border: 1px solid #00d4ff; border-radius: 20px; font-size: 14px;
+  }
+
   canvas {
-    display: block;
-    background: rgba(0, 0, 0, 0.85);
-    border: 2px solid #fff;
-    margin-top: 10px;
+    display: block; background: rgba(0, 0, 0, 0.9);
+    border: 4px solid #fff; margin-top: 15px;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
   }
-  .controls {
-    margin-top: 15px;
-    display: flex;
-    gap: 10px;
+
+  .controls { margin-top: 20px; display: flex; gap: 20px; }
+  .ui-btn {
+    padding: 15px 35px; font-size: 18px; background: #fff; color: #000;
+    border: none; border-radius: 50px; font-weight: bold; cursor: pointer;
   }
-  button.ui-btn {
-    padding: 12px 24px;
-    font-size: 16px;
-    background: white;
-    color: black;
-    border: none;
-    border-radius: 25px;
-    font-weight: bold;
-    cursor: pointer;
+  #retryBtn { background: #ff595e; color: #fff; display: none; }
+  
+  /* 待機中のガイダンス */
+  #guide-msg {
+    position: absolute; width: 100%; text-align: center;
+    top: 60%; font-size: 24px; font-weight: bold;
+    color: #00d4ff; text-shadow: 2px 2px 5px #000;
+    pointer-events: none; display: none;
+    animation: blink 1.5s infinite;
   }
-  #hud {
-    font-size: 18px;
-    margin-top: 10px;
-    text-shadow: 2px 2px 4px #000;
-  }
+  @keyframes blink { 0% {opacity: 1;} 50% {opacity: 0.3;} 100% {opacity: 1;} }
 </style>
 </head>
 <body>
 
-<div id="menu">
-  <h1 style="font-size: 28px; margin-bottom: 10px;">STAGE SELECT</h1>
-  <div class="stage-grid" id="stageGrid"></div>
-  <p style="font-size: 14px; color: #aaa;">好きなステージを選んでスタート！</p>
-</div>
+  <div id="menu">
+    <div id="title-msg">勇者、現る</div>
+    <div id="sub-title">位置情報を特定中...</div>
+    <div class="stage-grid" id="stageGrid"></div>
+  </div>
 
-<div id="hud">
-  <span id="stageName">STAGE 1</span> | Score: <span id="score">0</span>
-</div>
+  <div id="hud">
+    <div id="stageName">STAGE 1</div>
+    <div id="score-container">SCORE: <span id="score">0</span></div>
+    <div id="location-badge">REGION: SEARCHING...</div>
+  </div>
 
-<canvas id="game"></canvas>
+  <div style="position: relative;">
+    <canvas id="game"></canvas>
+    <div id="guide-msg">画面をタップで射出！</div>
+  </div>
 
-<div class="controls">
-  <button id="retryBtn" class="ui-btn" style="display:none;">もう一回</button>
-  <button id="menuBtn" class="ui-btn">ステージ選択へ</button>
-</div>
+  <div class="controls">
+    <button id="retryBtn" class="ui-btn">なけなしのもう一回</button>
+    <button id="menuBtn" class="ui-btn">メニューへ戻る</button>
+  </div>
 
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-const sfxBreak = new Audio("Fracture03-1(Dry).mp3");
+  /* --------------------------------------------------
+     メインスクリプト（JavaScript）
+     -------------------------------------------------- */
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  const scoreDisplay = document.getElementById("score");
+  const stageDisplay = document.getElementById("stageName");
+  const retryBtn = document.getElementById("retryBtn");
+  const guideMsg = document.getElementById("guide-msg");
+  const sfxBreak = new Audio("Fracture03-1(Dry).mp3");
+  const ballImage = new Image();
+  ballImage.src = "ball.png";
 
-let animationId;
-const ballImage = new Image();
-ballImage.src = "ball.png";
-
-let currentStage = 1;
-let score = 0;
-let ballRadius, x, y, dx, dy;
-let paddleHeight = 15;
-let paddleWidth, paddleX;
-let rightPressed = false, leftPressed = false;
-
-const brickRowCount = 8;
-const brickColumnCount = 10;
-let brickWidth, brickHeight, brickPadding = 6, brickOffsetTop = 40, brickOffsetLeft = 10;
-const brickColors = ["#FF595E", "#FFCA3A", "#8AC926", "#1982C4", "#6A4C93", "#F15BB5", "#EE6055", "#60D394"];
-
-let bricks = [];
-
-// メニュー生成
-const grid = document.getElementById("stageGrid");
-for(let i=1; i<=10; i++) {
-  const btn = document.createElement("button");
-  btn.className = "stage-btn" + (i === 10 ? " hard" : "");
-  btn.innerText = i;
-  btn.onclick = () => startLevel(i);
-  grid.appendChild(btn);
-}
-
-function resizeCanvas() {
-  const maxWidth = 800;
-  const scale = Math.min(window.innerWidth - 20, maxWidth);
-  canvas.width = scale;
-  canvas.height = scale * 0.75;
+  let animationId;
+  let currentStage = 1;
+  let score = 0;
+  let userRegion = "未知の国";
+  let x, y, dx, dy;
+  let ballRadius, paddleWidth, paddleHeight = 15, paddleX;
   
-  // スマホ向けにパドルを少し大きく（Stage10以外）
-  paddleWidth = (currentStage === 10) ? 15 : canvas.width * 0.25;
-  ballRadius = canvas.width * 0.025;
-  brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumnCount - 1))) / brickColumnCount;
-  brickHeight = canvas.height * 0.04;
-}
+  // 状態管理
+  let isWaiting = true; // ボールが止まっている状態か
+  let rightPressed = false;
+  let leftPressed = false;
 
-function getLayout(stage) {
-  let layout = [];
-  for(let c=0; c<brickColumnCount; c++) {
-    layout[c] = [];
-    for(let r=0; r<brickRowCount; r++) {
-      let v = 0;
-      if(stage === 1) v = 1; 
-      if(stage === 2) v = (r < 4) ? 1 : 0;
-      if(stage === 3) v = (c % 2 === 0) ? 1 : 0;
-      if(stage === 4) v = (r % 2 === 0) ? 1 : 0;
-      if(stage === 5) v = (c === r || c === (brickColumnCount-1)-r) ? 1 : 0;
-      if(stage === 6) v = (r === 0 || r === 7 || c === 0 || c === 9) ? 1 : 0;
-      if(stage === 7) v = (c+r) % 3 === 0 ? 1 : 0;
-      if(stage === 8) v = (r > 1 && r < 6 && c > 1 && c < 8) ? 0 : 1;
-      if(stage === 9) v = 1; 
-      if(stage === 10) v = 1; // 絶対クリア不可
-      layout[c][r] = { x: 0, y: 0, status: v };
-    }
+  const brickRowCount = 8;
+  const brickColumnCount = 10;
+  const brickPadding = 6;
+  const brickOffsetTop = 60;
+  const brickOffsetLeft = 10;
+  let brickWidth, brickHeight;
+  const brickColors = ["#FF595E", "#FFCA3A", "#8AC926", "#1982C4", "#6A4C93", "#F15BB5", "#EE6055", "#60D394"];
+  let bricks = [];
+
+  // 地域取得
+  fetch('https://ipapi.co/json/')
+    .then(res => res.json())
+    .then(data => {
+      userRegion = data.region || "どこか";
+      document.getElementById("title-msg").innerText = userRegion + "の勇者よ";
+      document.getElementById("sub-title").innerText = userRegion + "を守れ！";
+      document.getElementById("location-badge").innerText = "REGION: " + userRegion;
+    });
+
+  // メニュー生成
+  const grid = document.getElementById("stageGrid");
+  for (let i = 1; i <= 10; i++) {
+    const btn = document.createElement("button");
+    btn.className = "stage-btn" + (i === 10 ? " hard" : "");
+    btn.innerText = i;
+    btn.onclick = () => startLevel(i);
+    grid.appendChild(btn);
   }
-  return layout;
-}
 
-function startLevel(stage) {
-  currentStage = stage;
-  document.getElementById("menu").style.display = "none";
-  document.getElementById("stageName").innerText = "STAGE " + stage;
-  document.getElementById("retryBtn").style.display = "none";
-  resizeCanvas();
-  
-  bricks = getLayout(stage);
-  x = canvas.width / 2;
-  y = canvas.height - 50;
-  
-  let speed = 4 + (stage * 0.6);
-  if(stage === 9) speed = 9;
-  if(stage === 10) speed = 14; // 超速
-  
-  dx = speed;
-  dy = -speed;
-  paddleX = (canvas.width - paddleWidth) / 2;
-  score = 0;
-  document.getElementById("score").innerText = score;
-  cancelAnimationFrame(animationId);
-  draw();
-}
+  function resizeGame() {
+    const maxWidth = 800;
+    const size = Math.min(window.innerWidth - 20, maxWidth);
+    canvas.width = size; canvas.height = size * 0.75;
+    ballRadius = canvas.width * 0.025;
+    brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumnCount - 1))) / brickColumnCount;
+    brickHeight = canvas.height * 0.05;
+    paddleWidth = (currentStage === 10) ? 30 : canvas.width * 0.22;
+  }
 
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-  let activeCount = 0;
-  for(let c=0; c<brickColumnCount; c++) {
-    for(let r=0; r<brickRowCount; r++) {
-      let b = bricks[c][r];
-      if(b.status === 1) {
-        activeCount++;
-        let bx = c*(brickWidth+brickPadding)+brickOffsetLeft;
-        let by = r*(brickHeight+brickPadding)+brickOffsetTop;
-        b.x = bx; b.y = by;
-        ctx.fillStyle = brickColors[r];
-        ctx.fillRect(bx, by, brickWidth, brickHeight);
+  function createBricks(stage) {
+    bricks = [];
+    for (let c = 0; c < brickColumnCount; c++) {
+      bricks[c] = [];
+      for (let r = 0; r < brickRowCount; r++) {
+        let status = 1;
+        if (stage === 2) status = (r < 4) ? 1 : 0;
+        if (stage === 3) status = (c % 2 === 0) ? 1 : 0;
+        if (stage === 5) status = (c === r || c === (brickColumnCount - 1) - r) ? 1 : 0;
+        if (stage === 8) status = (r > 1 && r < 6 && c > 1 && c < 8) ? 0 : 1;
+        bricks[c][r] = { status: status };
       }
     }
   }
 
-  // ステージ10専用：無限ブロック生成
-  if(currentStage === 10 && activeCount < 30) {
-      bricks[Math.floor(Math.random()*brickColumnCount)][Math.floor(Math.random()*brickRowCount)].status = 1;
+  function startLevel(stage) {
+    currentStage = stage;
+    document.getElementById("menu").style.display = "none";
+    stageDisplay.innerText = (stage === 10) ? "FINAL: DESPAIR" : "STAGE " + stage;
+    retryBtn.style.display = "none";
+    guideMsg.style.display = "block"; // ガイド表示
+    score = 0;
+    scoreDisplay.innerText = score;
+    resizeGame();
+    createBricks(stage);
+
+    paddleX = (canvas.width - paddleWidth) / 2;
+    resetBall(); // ボールを待機状態に
+    if (animationId) cancelAnimationFrame(animationId);
+    draw();
   }
 
-  ctx.drawImage(ballImage, x - ballRadius, y - ballRadius, ballRadius * 2, ballRadius * 2);
-  ctx.fillStyle = "white";
-  ctx.fillRect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+  // ボールをパドルの上に固定する
+  function resetBall() {
+    isWaiting = true;
+    x = paddleX + paddleWidth / 2;
+    y = canvas.height - paddleHeight - ballRadius - 2;
+    
+    let speed = 4 + (currentStage * 0.7);
+    if (currentStage === 10) speed = 16;
+    dx = speed * (Math.random() > 0.5 ? 1 : -1);
+    dy = -speed;
+  }
 
-  // 当たり判定
-  for(let c=0; c<brickColumnCount; c++) {
-    for(let r=0; r<brickRowCount; r++) {
-      let b = bricks[c][r];
-      if(b.status === 1) {
-        if(x > b.x && x < b.x+brickWidth && y > b.y && y < b.y+brickHeight) {
-          dy = -dy; b.status = 0;
-          score += 10; document.getElementById("score").innerText = score;
-          sfxBreak.currentTime = 0; sfxBreak.play().catch(()=>{});
+  // ボールを射出する
+  function launchBall() {
+    if (isWaiting) {
+      isWaiting = false;
+      guideMsg.style.display = "none";
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // ブロック描画
+    let activeBricks = 0;
+    for (let c = 0; c < brickColumnCount; c++) {
+      for (let r = 0; r < brickRowCount; r++) {
+        let b = bricks[c][r];
+        if (b.status === 1) {
+          activeBricks++;
+          let bx = c * (brickWidth + brickPadding) + brickOffsetLeft;
+          let by = r * (brickHeight + brickPadding) + brickOffsetTop;
+          ctx.fillStyle = brickColors[r];
+          ctx.fillRect(bx, by, brickWidth, brickHeight);
+        }
+      }
+    }
+
+    if (currentStage === 10 && activeBricks < 40) {
+      bricks[Math.floor(Math.random()*brickColumnCount)][Math.floor(Math.random()*brickRowCount)].status = 1;
+    }
+
+    // パドル移動
+    const moveSpeed = 12;
+    if (rightPressed && paddleX < canvas.width - paddleWidth) paddleX += moveSpeed;
+    if (leftPressed && paddleX > 0) paddleX -= moveSpeed;
+
+    // 待機中ならボールをパドルに追従させる
+    if (isWaiting) {
+      x = paddleX + paddleWidth / 2;
+      y = canvas.height - paddleHeight - ballRadius - 2;
+    } else {
+      // 当たり判定
+      collisionDetection();
+      // 移動
+      x += dx; y += dy;
+      // 壁
+      if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) dx = -dx;
+      if (y + dy < ballRadius) dy = -dy;
+      // パドル
+      if (y + dy > canvas.height - ballRadius - paddleHeight) {
+        if (x > paddleX - ballRadius && x < paddleX + paddleWidth + ballRadius) {
+          if (y < canvas.height - paddleHeight) {
+            dy = -Math.abs(dy);
+            dx = ((x - (paddleX + paddleWidth / 2)) / (paddleWidth / 2)) * 10;
+          }
+        } else if (y + dy > canvas.height - ballRadius) {
+          retryBtn.style.display = "inline-block";
+          return;
+        }
+      }
+    }
+
+    ctx.drawImage(ballImage, x - ballRadius, y - ballRadius, ballRadius * 2, ballRadius * 2);
+    ctx.fillStyle = "#00d4ff";
+    ctx.fillRect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+
+    if (activeBricks === 0 && currentStage !== 10) {
+      alert(userRegion + "の平和は守られた！");
+      document.getElementById("menu").style.display = "flex";
+      return;
+    }
+    animationId = requestAnimationFrame(draw);
+  }
+
+  function collisionDetection() {
+    for (let c = 0; c < brickColumnCount; c++) {
+      for (let r = 0; r < brickRowCount; r++) {
+        let b = bricks[c][r];
+        if (b.status === 1) {
+          let bx = c * (brickWidth + brickPadding) + brickOffsetLeft;
+          let by = r * (brickHeight + brickPadding) + brickOffsetTop;
+          if (x + ballRadius > bx && x - ballRadius < bx + brickWidth &&
+              y + ballRadius > by && y - ballRadius < by + brickHeight) {
+            dy = -dy; b.status = 0;
+            score += 10; scoreDisplay.innerText = score;
+            sfxBreak.currentTime = 0; sfxBreak.play().catch(()=>{});
+            return;
+          }
         }
       }
     }
   }
 
-  if(x + dx > canvas.width - ballRadius || x + dx < ballRadius) dx = -dx;
-  if(y + dy < ballRadius) dy = -dy;
-  if(y + dy > canvas.height - ballRadius) {
-    if(x > paddleX && x < paddleX + paddleWidth) {
-      dy = -Math.abs(dy);
-      // 当たった場所によって角度を変える
-      dx = 10 * ((x - (paddleX + paddleWidth / 2)) / paddleWidth);
-    } else {
-      document.getElementById("retryBtn").style.display = "inline-block";
-      return;
-    }
+  // 操作設定
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight" || e.key === "d") rightPressed = true;
+    if (e.key === "ArrowLeft" || e.key === "a") leftPressed = true;
+    if (e.key === " " || e.key === "Enter") launchBall();
+  });
+  document.addEventListener("keyup", (e) => {
+    if (e.key === "ArrowRight" || e.key === "d") rightPressed = false;
+    if (e.key === "ArrowLeft" || e.key === "a") leftPressed = false;
+  });
+
+  function handleMove(inputX) {
+    const rect = canvas.getBoundingClientRect();
+    const scale = canvas.width / rect.width;
+    paddleX = (inputX - rect.left) * scale - (paddleWidth / 2);
+    if (paddleX < 0) paddleX = 0;
+    if (paddleX > canvas.width - paddleWidth) paddleX = canvas.width - paddleWidth;
   }
+  canvas.addEventListener("mousemove", (e) => handleMove(e.clientX));
+  canvas.addEventListener("touchmove", (e) => { e.preventDefault(); handleMove(e.touches[0].clientX); }, { passive: false });
+  canvas.addEventListener("mousedown", launchBall);
+  canvas.addEventListener("touchstart", (e) => { e.preventDefault(); launchBall(); }, { passive: false });
 
-  if(rightPressed && paddleX < canvas.width - paddleWidth) paddleX += 8;
-  if(leftPressed && paddleX > 0) paddleX -= 8;
-
-  x += dx; y += dy;
-  if(activeCount === 0 && currentStage !== 10) { 
-    alert("STAGE CLEAR!"); 
-    document.getElementById("menu").style.display = "flex"; 
-    return; 
-  }
-  animationId = requestAnimationFrame(draw);
-}
-
-// スマホ・PC共通操作
-const handleMove = (inputX) => {
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  paddleX = (inputX - rect.left) * scaleX - paddleWidth / 2;
-  if(paddleX < 0) paddleX = 0;
-  if(paddleX > canvas.width - paddleWidth) paddleX = canvas.width - paddleWidth;
-};
-
-canvas.addEventListener("touchmove", (e) => {
-  e.preventDefault();
-  handleMove(e.touches[0].clientX);
-}, { passive: false });
-
-canvas.addEventListener("mousemove", (e) => {
-  handleMove(e.clientX);
-});
-
-document.addEventListener("keydown", e => {
-  if(e.key === "ArrowRight") rightPressed = true;
-  if(e.key === "ArrowLeft") leftPressed = true;
-});
-document.addEventListener("keyup", e => {
-  if(e.key === "ArrowRight") rightPressed = false;
-  if(e.key === "ArrowLeft") leftPressed = false;
-});
-
-document.getElementById("retryBtn").onclick = () => startLevel(currentStage);
-document.getElementById("menuBtn").onclick = () => {
-  cancelAnimationFrame(animationId);
-  document.getElementById("menu").style.display = "flex";
-};
-
-// リサイズ対応
-window.addEventListener("resize", () => {
-  if (document.getElementById("menu").style.display === "none") {
-    resizeCanvas();
-  }
-});
+  retryBtn.onclick = () => startLevel(currentStage);
+  document.getElementById("menuBtn").onclick = () => {
+    cancelAnimationFrame(animationId);
+    document.getElementById("menu").style.display = "flex";
+  };
 </script>
 </body>
 </html>
